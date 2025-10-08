@@ -1,6 +1,7 @@
 import random
 import numpy
 import heapq
+import pygame
 
 WORLD_HEIGHT = 9
 WORLD_WIDTH = 9
@@ -17,12 +18,20 @@ for row in range(int(WORLD_HEIGHT)):
     working_list = []
 
 class Rabbit:
-    def __init__(self, start, goal=(0,0)):
+    def __init__(self, start, goal, tilewidth, tileheight):
         self.location = start
         self.goal = goal
         self.path = []
         self.path_index = 0
+        self.image = pygame.image.load("rabbit.png").convert_alpha()
+        self.image = pygame.transform.scale(self.image, (tilewidth, tileheight))
     
+    def draw(self, screen, tile_width, tile_height):
+        pixel_x = self.location[0] * tile_width
+        pixel_y = self.location[1] * tile_height
+
+        screen.blit(self.image, (pixel_x, pixel_y))
+
     def octile_distance(self, a, b):
         dx = abs(a[0] - b[0])
         dy = abs(a[1] - b[1])
