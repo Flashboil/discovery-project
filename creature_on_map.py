@@ -53,13 +53,15 @@ screen.fill((154, 202, 118))
 
 goal = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
 world_grid[goal[1]][goal[0]] = 5
-start = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
+start_rabbit = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
+start_fox = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
 
-rabbit = Rabbit(start, goal, tilewidth, tileheight, world_grid, grid_width, grid_height)
+rabbit = Rabbit(start_rabbit, goal, tilewidth, tileheight, world_grid, grid_width, grid_height)
 rabbit.find_path(rabbit.location, rabbit.goal)
-print("Path found:", rabbit.path)
+fox = Rabbit(start_fox, goal, tilewidth, tileheight, world_grid, grid_width, grid_height)
 draw_world_grid(world_grid)
 rabbit.draw(screen, tilewidth, tileheight)
+fox.draw(screen, tilewidth, tileheight)
 pygame.display.flip()
 
 running = True
@@ -79,14 +81,20 @@ while running:
     screen.fill((0, 0, 0))
     draw_world_grid(world_grid)
 
+
     # Control how often the rabbit moves (not every single frame)
     if frame_counter % move_delay == 0:
+        if frame_counter % (move_delay * 3) == 0:  # once every ~10 moves
+            fox.find_path(fox.location, rabbit.location)
         rabbit.follow_path()
-        print(rabbit.location)
+        fox.follow_path()
+        print(fox.location)
 
     rabbit.draw(screen, tilewidth, tileheight)
+    fox.draw(screen, tilewidth, tileheight)
     pygame.display.flip()
 
     frame_counter += 1
     clock.tick(30)  # 30 FPS for smooth drawing
+
 

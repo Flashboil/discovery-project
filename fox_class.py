@@ -1,9 +1,8 @@
-import random
 import numpy
 import heapq
 import pygame
 
-class Rabbit:
+class Fox:
     def __init__(self, start, goal, tilewidth, tileheight, world_grid, world_width, world_height):
         self.world_grid = world_grid
         self.world_width = world_width
@@ -12,7 +11,7 @@ class Rabbit:
         self.goal = goal
         self.path = []
         self.path_index = 0
-        self.image = pygame.image.load("images/rabbit_red.png").convert_alpha()
+        self.image = pygame.image.load("images/fox_red.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (tilewidth, tileheight))
     
     def draw(self, screen, tile_width, tile_height):
