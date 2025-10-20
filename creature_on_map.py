@@ -1,6 +1,7 @@
 import pygame
 import random
 from rabbit_class import Rabbit
+from fox_class import Fox
 
 pygame.init()
 
@@ -58,7 +59,7 @@ start_fox = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 
 
 rabbit = Rabbit(start_rabbit, goal, tilewidth, tileheight, world_grid, grid_width, grid_height)
 rabbit.find_path(rabbit.location, rabbit.goal)
-fox = Rabbit(start_fox, goal, tilewidth, tileheight, world_grid, grid_width, grid_height)
+fox = Fox(start_fox, goal, tilewidth, tileheight, world_grid, grid_width, grid_height)
 draw_world_grid(world_grid)
 rabbit.draw(screen, tilewidth, tileheight)
 fox.draw(screen, tilewidth, tileheight)
@@ -77,18 +78,21 @@ while running:
             running = False
 
     # Fill background once per frame
-    # screen.fill((154, 202, 118))
-    screen.fill((0, 0, 0))
+    screen.fill((154, 202, 118))
+    # screen.fill((0, 0, 0))
     draw_world_grid(world_grid)
 
 
-    # Control how often the rabbit moves (not every single frame)
     if frame_counter % move_delay == 0:
-        if frame_counter % (move_delay * 3) == 0:  # once every ~10 moves
+        # Fox recalculates before rabbit moves
+        if not fox.path or fox.path_index >= len(fox.path) or frame_counter % (move_delay * 10) == 0:
             fox.find_path(fox.location, rabbit.location)
-        rabbit.follow_path()
+
         fox.follow_path()
-        print(fox.location)
+        rabbit.follow_path()
+
+    if fox.location == rabbit.location:
+        running = False
 
     rabbit.draw(screen, tilewidth, tileheight)
     fox.draw(screen, tilewidth, tileheight)
