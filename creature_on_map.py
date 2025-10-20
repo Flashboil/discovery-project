@@ -83,13 +83,19 @@ while running:
     draw_world_grid(world_grid)
 
 
-    if frame_counter % move_delay == 0:
-        # Fox recalculates before rabbit moves
-        if not fox.path or fox.path_index >= len(fox.path) or frame_counter % (move_delay * 10) == 0:
-            fox.find_path(fox.location, rabbit.location)
+    rabbit_delay = 15
+    fox_delay = 12  # smaller number = faster
 
-        fox.follow_path()
+    if frame_counter % rabbit_delay == 0:
         rabbit.follow_path()
+
+    if frame_counter % fox_delay == 0:
+        if frame_counter % (rabbit_delay * 2) == 0:
+            rabbit_future = rabbit.path[rabbit.path_index + 1] if rabbit.path_index + 1 < len(rabbit.path) else rabbit.location
+            fox.find_path(fox.location, rabbit_future)
+        fox.follow_path()
+
+
 
     if fox.location == rabbit.location:
         running = False
