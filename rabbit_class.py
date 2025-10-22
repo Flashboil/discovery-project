@@ -12,6 +12,10 @@ class Rabbit:
         self.goal = goal
         self.path = []
         self.path_index = 0
+
+        self.vision_radius = 5
+        self.state = "wander"
+
         self.image = pygame.image.load("images/rabbit_red.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (tilewidth, tileheight))
     
@@ -107,3 +111,13 @@ class Rabbit:
                 locals.append(((neighbor_x, neighbor_y), cost))
 
         return locals
+    
+    def detect_flower(self):
+        x, y = self.location
+        for dy in range(-self.vision_radius, self.vision_radius + 1):
+            for dx in range(-self.vision_radius, self.vision_radius + 1):
+                nx, ny = x + dx, y + dy
+                if 0 <= nx < self.world_width and 0 <= ny < self.world_height:
+                    if self.world_grid[ny][nx] == 5:  # flower tile
+                        return (nx, ny)
+        return None
