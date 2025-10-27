@@ -121,3 +121,11 @@ class Rabbit:
                     if self.world_grid[ny][nx] == 5:  # flower tile
                         return (nx, ny)
         return None
+    
+    def wander(self):
+        x = min(max(self.location[0] + random.randint(-3, 3), 0), self.world_width - 1)
+        y = min(max(self.location[1] + random.randint(-3, 3), 0), self.world_height - 1)
+        if self.world_grid[y][x] in (0, 3):  # walkable
+            self.goal = (x, y)
+            self.find_path(self.location, self.goal)
+
