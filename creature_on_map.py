@@ -91,8 +91,8 @@ while running:
 
     if frame_counter % fox_delay == 0:
         if frame_counter % (rabbit_delay * 2) == 0:
-            # rabbit_future = rabbit.path[rabbit.path_index + 1] if rabbit.path_index + 1 < len(rabbit.path) else rabbit.location
-            rabbit_future = rabbit.location
+            rabbit_future = rabbit.path[rabbit.path_index + 1] if rabbit.path_index + 1 < len(rabbit.path) else rabbit.location
+            # rabbit_future = rabbit.location
             fox.find_path(fox.location, rabbit_future)
         fox.follow_path()
 
