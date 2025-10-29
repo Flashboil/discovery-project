@@ -122,10 +122,10 @@ class Rabbit:
                         return (nx, ny)
         return None
     
-    def wander(self):
+    def wander(self, fox_path):
         x = min(max(self.location[0] + random.randint(-3, 3), 0), self.world_width - 1)
         y = min(max(self.location[1] + random.randint(-3, 3), 0), self.world_height - 1)
-        if self.world_grid[y][x] in (0, 3):  # walkable
+        if self.world_grid[y][x] in (0, 3) and self.world_grid[y][x] not in fox_path:  # walkable
             self.goal = (x, y)
             self.find_path(self.location, self.goal)
 

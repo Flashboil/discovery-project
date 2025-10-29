@@ -52,8 +52,9 @@ def draw_world_grid(world_grid):
 
 screen.fill((154, 202, 118))
 
-goal = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
-world_grid[goal[1]][goal[0]] = 5
+for i in range(0, 3):
+    goal = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
+    world_grid[goal[1]][goal[0]] = 5
 start_rabbit = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
 start_fox = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
 
@@ -72,6 +73,8 @@ clock = pygame.time.Clock()
 move_delay = 15
 frame_counter = 0
 
+rabbit_score = 0
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -83,20 +86,62 @@ while running:
     draw_world_grid(world_grid)
 
 
-    rabbit_delay = 13
-    fox_delay = 12  # smaller number = faster
+    rabbit_delay = 14
+    fox_delay = 10  # faster than rabbit
 
+
+    # === Rabbit Behavior ===
     if frame_counter % rabbit_delay == 0:
         rabbit.follow_path()
+        if rabbit.state == "wander" and not rabbit.path:
+            rabbit.wander(fox.path)
+            rabbit.find_path(rabbit.location, rabbit.goal)
+        if rabbit.detect_flower() and rabbit.state == "wander":
+            rabbit.path = []
+            rabbit.state = "seek"
+            rabbit.find_path(rabbit.location, rabbit.detect_flower())
 
+
+    # === Fox Behavior ===
     if frame_counter % fox_delay == 0:
-        if frame_counter % (rabbit_delay * 2) == 0:
-            rabbit_future = rabbit.path[rabbit.path_index + 1] if rabbit.path_index + 1 < len(rabbit.path) else rabbit.location
-            # rabbit_future = rabbit.location
-            fox.find_path(fox.location, rabbit_future)
+
+        # 1. Wandering behavior
+        if fox.state == "wander":
+            # Occasionally pick a new random goal
+            if not fox.path:
+                fox.wander()
+
+            # Check if rabbit is visible
+            if fox.detect_rabbit(rabbit.location):
+                fox.state = "hunt"
+                fox.goal = rabbit.location
+                fox.find_path(fox.location, fox.goal)
+
+        # 2. Hunting behavior
+        elif fox.state == "hunt":
+            # If rabbit still visible, chase updated position
+            if fox.detect_rabbit(rabbit.location):
+                fox.goal = rabbit.location
+                fox.find_path(fox.location, fox.goal)
+            else:
+                # Lost sight of rabbit — switch back to wander
+                fox.state = "wander"
+
         fox.follow_path()
 
+
+
+    if world_grid[rabbit.location[1]][rabbit.location[0]] == 5:
+        world_grid[rabbit.location[1]][rabbit.location[0]] = 0
+        goal = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
+        world_grid[goal[1]][goal[0]] = 5
+        rabbit.state = "wander"
+        rabbit_score += 1
+        print(rabbit_score)
+
     if fox.location == rabbit.location:
+        print("Game End!")
+        print(f"Score: {rabbit_score}")
         running = False
 
     rabbit.draw(screen, tilewidth, tileheight)
@@ -104,6 +149,6 @@ while running:
     pygame.display.flip()
 
     frame_counter += 1
-    clock.tick(30)  # 30 FPS for smooth drawing
+    clock.tick(30)
 
 

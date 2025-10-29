@@ -1,3 +1,4 @@
+import random
 import numpy
 import heapq
 import pygame
@@ -13,6 +14,9 @@ class Fox:
         self.path_index = 0
         self.image = pygame.image.load("images/fox_red.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (tilewidth, tileheight))
+
+        self.vision_radius = 5
+        self.state = "wander"
     
     def draw(self, screen, tile_width, tile_height):
         pixel_x = self.location[0] * tile_width
@@ -112,3 +116,22 @@ class Fox:
                 locals.append(((neighbor_x, neighbor_y), cost))
 
         return locals
+    
+    def detect_rabbit(self, rabbit_location):
+        x, y = self.location
+        rx, ry = rabbit_location
+
+        dx = abs(rx - x)
+        dy = abs(ry - y)
+
+        # Simple circular/diamond vision range
+        if dx <= self.vision_radius and dy <= self.vision_radius:
+            return True
+        return False
+    
+    def wander(self):
+        x = min(max(self.location[0] + random.randint(-3, 3), 0), self.world_width - 1)
+        y = min(max(self.location[1] + random.randint(-3, 3), 0), self.world_height - 1)
+        if self.world_grid[y][x] in (0, 3):  # walkable
+            self.goal = (x, y)
+            self.find_path(self.location, self.goal)
