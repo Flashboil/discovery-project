@@ -5,8 +5,8 @@ from fox_class import Fox
 
 pygame.init()
 
-WORLD_HEIGHT = 500
-WORLD_WIDTH = 500
+WORLD_HEIGHT = 600
+WORLD_WIDTH = 600
 
 screen = pygame.display.set_mode((WORLD_WIDTH, WORLD_HEIGHT))
 screen.fill((154, 202, 118))
@@ -75,6 +75,8 @@ frame_counter = 0
 
 rabbit_score = 0
 
+cooldown = 4
+
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -86,20 +88,35 @@ while running:
     draw_world_grid(world_grid)
 
 
-    rabbit_delay = 14
-    fox_delay = 10  # faster than rabbit
+    rabbit_delay = rabbit.speed
+    fox_delay = fox.speed
 
-
+    rabbit.update_speed()
     # === Rabbit Behavior ===
     if frame_counter % rabbit_delay == 0:
         rabbit.follow_path()
-        if rabbit.state == "wander" and not rabbit.path:
+
+        if cooldown < 4:
+            cooldown += 1
+
+        # If fox is near, flee instead
+        if rabbit.detect_fox(fox.location):
+            escape_goal = rabbit.find_escape_goal(fox.location, grid_width, grid_height, world_grid)
+            if escape_goal:
+                rabbit.state = "flee"
+                rabbit.find_path(rabbit.location, escape_goal)
+                rabbit.boost()
+
+
+        elif rabbit.state == "wander" and not rabbit.path:
             rabbit.wander(fox.path)
             rabbit.find_path(rabbit.location, rabbit.goal)
-        if rabbit.detect_flower() and rabbit.state == "wander":
+
+        elif rabbit.detect_flower() and rabbit.state == "wander":
             rabbit.path = []
             rabbit.state = "seek"
             rabbit.find_path(rabbit.location, rabbit.detect_flower())
+
 
 
     # === Fox Behavior ===

@@ -12,6 +12,13 @@ class Rabbit:
         self.goal = goal
         self.path = []
         self.path_index = 0
+        self.base_speed = 14
+        self.boost_speed = 8
+        self.speed = self.base_speed
+        self.boost_timer = 0
+        self.boost_cooldown = 120  # frames until next boost allowed
+        self.can_boost = True
+
 
         self.vision_radius = 5
         self.state = "wander"
@@ -19,6 +26,32 @@ class Rabbit:
         self.image = pygame.image.load("images/rabbit_red.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (tilewidth, tileheight))
     
+    def boost(self):
+        # Only trigger if not already boosted or cooling down
+        if self.can_boost:
+            self.speed = self.boost_speed
+            self.boost_timer = 45  # how long boost lasts (in frames)
+            self.can_boost = False
+
+
+    def update_speed(self):
+        # Handle boost timer countdown
+        if self.boost_timer > 0:
+            self.boost_timer -= 1
+            if self.boost_timer <= 0:
+                self.speed = self.base_speed
+                self.boost_timer = 0
+
+        # Handle cooldown reset (so it can boost again later)
+        if not self.can_boost and self.boost_timer == 0:
+            if not hasattr(self, "_cooldown_counter"):
+                self._cooldown_counter = 0
+            self._cooldown_counter += 1
+            if self._cooldown_counter >= self.boost_cooldown:
+                self.can_boost = True
+                self._cooldown_counter = 0
+
+
     def draw(self, screen, tile_width, tile_height):
         pixel_x = self.location[0] * tile_width
         pixel_y = self.location[1] * tile_height
@@ -128,4 +161,60 @@ class Rabbit:
         if self.world_grid[y][x] in (0, 3) and self.world_grid[y][x] not in fox_path:  # walkable
             self.goal = (x, y)
             self.find_path(self.location, self.goal)
+
+    def detect_fox(self, fox_location):
+        if fox_location is None:
+            return False
+        x, y = self.location
+        fx, fy = fox_location
+        dx = abs(fx - x)
+        dy = abs(fy - y)
+        return dx <= self.vision_radius and dy <= self.vision_radius
+
+
+    def flee_from_fox(self, fox_location):
+        x, y = self.location
+        fx, fy = fox_location
+
+        # Direction vector away from fox
+        dx = x - fx
+        dy = y - fy
+
+        # Normalize direction roughly
+        if dx != 0:
+            dx = int(dx / abs(dx))
+        if dy != 0:
+            dy = int(dy / abs(dy))
+
+        # Move several tiles away
+        escape_x = min(max(x + dx * 5, 0), self.world_width - 1)
+        escape_y = min(max(y + dy * 5, 0), self.world_height - 1)
+
+        # Ensure it’s a walkable goal
+        if self.world_grid[escape_y][escape_x] in (0, 3, 5):
+            self.goal = (escape_x, escape_y)
+            self.state = "flee"
+            self.find_path(self.location, self.goal)
+
+    def find_escape_goal(self, fox_location, grid_width, grid_height, world_grid):
+        # Generate candidate tiles around the rabbit
+        directions = [(-1, -1), (0, -1), (1, -1),
+                    (-1,  0),          (1,  0),
+                    (-1,  1), (0,  1), (1,  1)]
+        
+        best_goal = None
+        best_score = -float('inf')
+
+        for dx in range(-5, 6):   # look in a 10x10 area
+            for dy in range(-5, 6):
+                gx = self.location[0] + dx
+                gy = self.location[1] + dy
+                if 0 <= gx < grid_width and 0 <= gy < grid_height:
+                    if world_grid[gy][gx] == 0:  # empty
+                        dist = ((gx - fox_location[0])**2 + (gy - fox_location[1])**2)**0.5
+                        if dist > best_score:
+                            best_score = dist
+                            best_goal = (gx, gy)
+
+        return best_goal
 

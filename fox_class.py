@@ -12,6 +12,8 @@ class Fox:
         self.goal = goal
         self.path = []
         self.path_index = 0
+        self.speed = 10
+
         self.image = pygame.image.load("images/fox_red.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (tilewidth, tileheight))
 
