@@ -18,6 +18,11 @@ class Rabbit:
         self.boost_timer = 0
         self.boost_cooldown = 120  # frames until next boost allowed
         self.can_boost = True
+        self.recovery_timer = 0
+        self.recovery_delay = 20  # frames of rest after fleeing
+
+
+        self.safe_radius = 7
 
 
         self.vision_radius = 5
@@ -30,7 +35,7 @@ class Rabbit:
         # Only trigger if not already boosted or cooling down
         if self.can_boost:
             self.speed = self.boost_speed
-            self.boost_timer = 45  # how long boost lasts (in frames)
+            self.boost_timer = 24  # how long boost lasts (in frames)
             self.can_boost = False
 
 
@@ -138,7 +143,7 @@ class Rabbit:
             neighbor_x = current_x + dx
             neighbor_y = current_y + dy
             if 0 <= neighbor_x < self.world_width and 0 <= neighbor_y < self.world_height:
-                if self.world_grid[neighbor_y][neighbor_x] not in (0, 3, 5): 
+                if self.world_grid[neighbor_y][neighbor_x] not in (0, 3, 5, 7): 
                     continue
                 cost = 1.414 if dx != 0 and dy != 0 else 1
                 locals.append(((neighbor_x, neighbor_y), cost))
@@ -156,11 +161,31 @@ class Rabbit:
         return None
     
     def wander(self, fox_path):
-        x = min(max(self.location[0] + random.randint(-3, 3), 0), self.world_width - 1)
-        y = min(max(self.location[1] + random.randint(-3, 3), 0), self.world_height - 1)
-        if self.world_grid[y][x] in (0, 3) and self.world_grid[y][x] not in fox_path:  # walkable
-            self.goal = (x, y)
+        attempts = 0
+        while attempts < 5:
+            if random.random() < 0.25:
+                gx = random.randint(0, self.world_width - 1)
+                gy = random.randint(0, self.world_height - 1)
+            else:
+                wander_range = random.randint(4, 8)
+                gx = min(max(self.location[0] + random.randint(-wander_range, wander_range), 0), self.world_width - 1)
+                gy = min(max(self.location[1] + random.randint(-wander_range, wander_range), 0), self.world_height - 1)
+
+            if self.world_grid[gy][gx] in (0, 3, 5, 7) and (gx, gy) not in fox_path:
+                self.goal = (gx, gy)
+                self.find_path(self.location, self.goal)
+                if self.path:
+                    return
+            attempts += 1
+
+        # If all attempts fail, pick random open tile
+        open_tiles = [(x, y) for y in range(self.world_height) for x in range(self.world_width)
+                    if self.world_grid[y][x] in (0, 3, 5, 7)]
+        if open_tiles:
+            self.goal = random.choice(open_tiles)
             self.find_path(self.location, self.goal)
+
+
 
     def detect_fox(self, fox_location):
         if fox_location is None:
@@ -217,4 +242,14 @@ class Rabbit:
                             best_goal = (gx, gy)
 
         return best_goal
+    
+    def is_safe(self, fox_location):
+        if fox_location is None:
+            return True
+        x, y = self.location
+        fx, fy = fox_location
+        dx = abs(fx - x)
+        dy = abs(fy - y)
+        return dx > self.safe_radius or dy > self.safe_radius
+
 
