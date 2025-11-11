@@ -21,9 +21,7 @@ class Rabbit:
         self.recovery_timer = 0
         self.recovery_delay = 20  # frames of rest after fleeing
 
-
         self.safe_radius = 7
-
 
         self.vision_radius = 5
         self.state = "wander"
@@ -31,6 +29,8 @@ class Rabbit:
         self.image = pygame.image.load("images/rabbit_red.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (tilewidth, tileheight))
     
+        self.home = start
+
     def boost(self):
         # Only trigger if not already boosted or cooling down
         if self.can_boost:

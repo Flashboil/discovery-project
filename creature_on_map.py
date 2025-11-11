@@ -5,8 +5,8 @@ from fox_class import Fox
 
 pygame.init()
 
-WORLD_HEIGHT = 600
-WORLD_WIDTH = 600
+WORLD_HEIGHT = 550
+WORLD_WIDTH = 650
 
 screen = pygame.display.set_mode((WORLD_WIDTH, WORLD_HEIGHT))
 screen.fill((154, 202, 118))
@@ -15,7 +15,7 @@ pygame.display.set_caption("Ecosystem Simulator")
 world_grid = []
 working_list = []
 
-cell_states = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 6, 6]
+cell_states = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 1, 6]
 
 for row in range(int(WORLD_HEIGHT/25)):
     for column in range(int(WORLD_WIDTH/25)):
@@ -74,15 +74,35 @@ def draw_world_foreground(world_grid):
     for row in range(len(world_grid)):
         for column in range(len(world_grid[row])):
             if world_grid[row][column] == 7 or world_grid[row][column] == (6,7):
-                screen.blit(tree_top_image, (column * tilewidth, row * tileheight))
+                if (column, row) == rabbit.location or (column, row) == fox.location:
+                    # Create a faded copy for transparency
+                    faded_top = tree_top_image.copy()
+                    faded_top.set_alpha(160)  # slightly transparent
+                    screen.blit(faded_top, (column * tilewidth, row * tileheight))
+                else:
+                    # Draw normal opaque top
+                    screen.blit(tree_top_image, (column * tilewidth, row * tileheight))
+
+def place_flowers(count):
+    i = 0
+    while i < count:
+        gx = random.randint(0, grid_width - 1)
+        gy = random.randint(0, grid_height - 1)
+        tile = world_grid[gy][gx]
+
+        # Only place on walkable ground — not on trees, rocks, shrubs, etc.
+        if tile in (0, 3, 5):  # 0=grass, 3=clover, 5=flower (can replace another flower)
+            world_grid[gy][gx] = 5
+            i += 1
 
 screen.fill((154, 202, 118))
 
-for i in range(0, 3):
-    goal = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
-    world_grid[goal[1]][goal[0]] = 5
+place_flowers(3)
+
 start_rabbit = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
 start_fox = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
+
+goal = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
 
 rabbit = Rabbit(start_rabbit, goal, tilewidth, tileheight, world_grid, grid_width, grid_height)
 rabbit.find_path(rabbit.location, rabbit.goal)
@@ -180,22 +200,26 @@ while running:
 
         # 2. Hunting behavior
         elif fox.state == "hunt":
-            # If rabbit still visible, chase updated position
             if fox.detect_rabbit(rabbit.location):
                 fox.goal = rabbit.location
                 fox.find_path(fox.location, fox.goal)
+                fox.memory_timer = fox.memory_duration  # refresh memory
             else:
-                # Lost sight of rabbit — switch back to wander
-                fox.state = "wander"
+                fox.memory_timer -= 1
+                if fox.memory_timer <= 0:
+                    fox.state = "wander"
+                    fox.path = []
+                    fox.goal = None
+                    fox.wander()  # 🦊 immediately pick a new random wander goal
+                else:
+                    # Keep moving toward last known rabbit location
+                    fox.find_path(fox.location, fox.goal)
 
         fox.follow_path()
 
-
-
     if world_grid[rabbit.location[1]][rabbit.location[0]] == 5:
         world_grid[rabbit.location[1]][rabbit.location[0]] = 0
-        goal = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
-        world_grid[goal[1]][goal[0]] = 5
+        place_flowers(1)
         rabbit.state = "wander"
         rabbit_score += 1
         print(rabbit_score)

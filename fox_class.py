@@ -17,6 +17,9 @@ class Fox:
         self.image = pygame.image.load("images/fox_red.png").convert_alpha()
         self.image = pygame.transform.scale(self.image, (tilewidth, tileheight))
 
+        self.memory_timer = 0
+        self.memory_duration = 60  # number of frames fox will "remember" seeing rabbit
+
         self.vision_radius = 5
         self.state = "wander"
     
@@ -132,15 +135,32 @@ class Fox:
         return False
     
     def wander(self):
-        if random.random() < 0.25:  # 25% chance to pick a completely new area
-            gx = random.randint(0, self.world_width - 1)
-            gy = random.randint(0, self.world_height - 1)
-        else:
-            wander_range = random.randint(4, 8)
-            gx = min(max(self.location[0] + random.randint(-wander_range, wander_range), 0), self.world_width - 1)
-            gy = min(max(self.location[1] + random.randint(-wander_range, wander_range), 0), self.world_height - 1)
+        attempts = 0
+        max_attempts = 10
+        self.goal = None
 
-        if self.world_grid[gy][gx] in (0, 3, 5, 7):
-            self.goal = (gx, gy)
-            self.find_path(self.location, self.goal)
+        while attempts < max_attempts and self.goal is None:
+            # 25% chance to pick a faraway random area
+            if random.random() < 0.25:
+                gx = random.randint(0, self.world_width - 1)
+                gy = random.randint(0, self.world_height - 1)
+            else:
+                wander_range = random.randint(4, 8)
+                gx = min(max(self.location[0] + random.randint(-wander_range, wander_range), 0), self.world_width - 1)
+                gy = min(max(self.location[1] + random.randint(-wander_range, wander_range), 0), self.world_height - 1)
+
+            # Check if the tile is walkable
+            if self.world_grid[gy][gx] in (0, 3, 5, 7):
+                self.goal = (gx, gy)
+            else:
+                attempts += 1
+
+            # If we found a goal, plan a path
+            if self.goal:
+                self.find_path(self.location, self.goal)
+            else:
+                # fallback to a guaranteed safe tile
+                self.goal = self.location
+                self.path = []
+
 
