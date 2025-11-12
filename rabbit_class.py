@@ -143,7 +143,7 @@ class Rabbit:
             neighbor_x = current_x + dx
             neighbor_y = current_y + dy
             if 0 <= neighbor_x < self.world_width and 0 <= neighbor_y < self.world_height:
-                if self.world_grid[neighbor_y][neighbor_x] not in (0, 3, 5, 7): 
+                if self.world_grid[neighbor_y][neighbor_x] not in (0, 3, 5, 7, 9): 
                     continue
                 cost = 1.414 if dx != 0 and dy != 0 else 1
                 locals.append(((neighbor_x, neighbor_y), cost))
@@ -171,7 +171,7 @@ class Rabbit:
                 gx = min(max(self.location[0] + random.randint(-wander_range, wander_range), 0), self.world_width - 1)
                 gy = min(max(self.location[1] + random.randint(-wander_range, wander_range), 0), self.world_height - 1)
 
-            if self.world_grid[gy][gx] in (0, 3, 5, 7) and (gx, gy) not in fox_path:
+            if self.world_grid[gy][gx] in (0, 3, 5, 7, 9) and (gx, gy) not in fox_path:
                 self.goal = (gx, gy)
                 self.find_path(self.location, self.goal)
                 if self.path:

@@ -5,6 +5,11 @@ from fox_class import Fox
 
 pygame.init()
 
+
+day_length = 60 * 30  # e.g. 30 seconds if you’re running at 60 FPS
+day_timer = day_length
+
+
 WORLD_HEIGHT = 550
 WORLD_WIDTH = 650
 
@@ -55,6 +60,8 @@ tree_bottom_image = pygame.image.load("images/tree_bottom.png").convert_alpha()
 tree_bottom_image = pygame.transform.scale(tree_bottom_image, (tileheight, tilewidth))
 tree_top_image = pygame.image.load("images/tree_top.png").convert_alpha()
 tree_top_image = pygame.transform.scale(tree_top_image, (tileheight, tilewidth))
+warren_image = pygame.image.load("images/warren.png").convert_alpha()
+warren_image = pygame.transform.scale(warren_image, (tileheight, tilewidth))
 
 def draw_world_grid(world_grid):
     for row in range(len(world_grid)):
@@ -69,6 +76,8 @@ def draw_world_grid(world_grid):
                 screen.blit(flower_image, (column * tilewidth, row * tileheight))
             if world_grid[row][column] == 6 or world_grid[row][column] == (6,7):
                 screen.blit(tree_bottom_image, (column * tilewidth, row * tileheight))
+            if world_grid[row][column] == 9:
+                screen.blit(warren_image, (column * tilewidth, row * tileheight))
 
 def draw_world_foreground(world_grid):
     for row in range(len(world_grid)):
@@ -121,7 +130,10 @@ frame_counter = 0
 
 rabbit_score = 0
 
-cooldown = 4
+required_flowers = 5
+
+rabbit_home = rabbit.location
+world_grid[rabbit.location[1]][rabbit.location[0]] = 9
 
 while running:
     for event in pygame.event.get():
@@ -181,6 +193,25 @@ while running:
             rabbit.wander(fox.path)
             rabbit.find_path(rabbit.location, rabbit.goal)
 
+        # Check win/lose conditions
+        if rabbit_score >= required_flowers and rabbit.state != "return_home":
+            print("Enough flowers collected! Returning home.")
+            rabbit.state = "return_home"
+            rabbit.find_path(rabbit.location, rabbit_home)
+
+        elif day_timer <= 0 and rabbit.state != "return_home":
+            print("Day ended! Returning home.")
+            rabbit.state = "return_home"
+            rabbit.find_path(rabbit.location, rabbit_home)
+
+        if rabbit.state == "return_home" and rabbit.location == rabbit_home:
+            print("Rabbit made it home safely!")
+            if rabbit_score >= required_flowers:
+                print("You survived the day!")
+            else:
+                print("Not enough food collected. Game over.")
+            running = False
+
 
 
     # === Fox Behavior ===
@@ -233,6 +264,11 @@ while running:
     fox.draw(screen, tilewidth, tileheight)
     draw_world_foreground(world_grid)
     pygame.display.flip()
+
+    day_timer -= 1
+
+    if frame_counter % 30 == 0:
+        print("Time left:", day_timer // 30)
 
     frame_counter += 1
     clock.tick(30)
