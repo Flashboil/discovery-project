@@ -1,7 +1,7 @@
 import pygame
 import random
-from rabbit import Rabbit
-from fox import Fox
+from X_rabbit import Rabbit
+from X_fox import Fox
 
 pygame.init()
 
@@ -213,6 +213,7 @@ frame_counter = 0
 
 rabbit_score = 0
 
+# GAME LOOP STARTS HERE!
 
 while running:
     for event in pygame.event.get():

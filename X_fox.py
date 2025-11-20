@@ -1,4 +1,4 @@
-from creature import Creature
+from X_creature import Creature
 
 class Fox(Creature):
     def __init__(self, start, image_path, tile_w, tile_h,

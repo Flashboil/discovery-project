@@ -1,5 +1,5 @@
 import pygame
-from creature import Creature
+from X_creature import Creature
 import random
 import numpy
 

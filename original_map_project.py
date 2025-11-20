@@ -1,135 +1,217 @@
 import pygame
 import random
-from rabbit import Rabbit
-from fox import Fox
+from rabbit_class import Rabbit
+from fox_class import Fox
 
 pygame.init()
 
-
-day_length = 60 * 30  # e.g. 30 seconds if you’re running at 60 FPS
-day_timer = day_length
-
+# ============================================================
+# 1. GAME CONFIGURATION
+# ============================================================
 
 WORLD_HEIGHT = 550
 WORLD_WIDTH = 650
+TILE_SIZE = 25  # implicit from world generation grid spacing
+
+day_length = 60 * 30  # 30 seconds @ 60 fps
+day_timer = day_length
+
+required_flowers = 5  # goal for the day
+
+
+# ============================================================
+# 2. SCREEN SETUP
+# ============================================================
 
 screen = pygame.display.set_mode((WORLD_WIDTH, WORLD_HEIGHT))
-screen.fill((154, 202, 118))
+screen.fill((154, 202, 118))  # background color
 pygame.display.set_caption("Ecosystem Simulator")
+
+
+# ============================================================
+# 3. WORLD GENERATION
+# ============================================================
+
+# Tile codes:
+# 0 = empty grass
+# 1 = rock
+# 2 = shrub
+# 3 = clover
+# 5 = flower
+# 6 = tree bottom
+# 7 = tree top
+# (6,7) = linked tree bottom+top stack
+# 9 = rabbit warren (home)
 
 world_grid = []
 working_list = []
 
-cell_states = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2, 1, 1, 6]
+# Weighted tile distribution — most slots are 0 for empty ground
+cell_states = [
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # lots of empty ground
+    2,   # shrub
+    1, 1,  # rock
+    6   # tree bottom (tree top placed later)
+]
 
-for row in range(int(WORLD_HEIGHT/25)):
-    for column in range(int(WORLD_WIDTH/25)):
+rows = WORLD_HEIGHT // TILE_SIZE
+cols = WORLD_WIDTH // TILE_SIZE
+
+# --- Generate base terrain ---
+for row in range(rows):
+    for col in range(cols):
         working_list.append(random.choice(cell_states))
     world_grid.append(working_list.copy())
     working_list = []
 
-for row in range(int(WORLD_HEIGHT/25)):
-    for column in range(int(WORLD_WIDTH/25)):
-        if world_grid[row][column] == 6:
-            if world_grid[row-1][column] == 6:
-                world_grid[row-1][column] = (6,7)
+# --- Add tree tops (7) above tree bottoms (6) ---
+for row in range(1, rows):  # start at row 1 to avoid row-1 out of bounds
+    for col in range(cols):
+        if world_grid[row][col] == 6:  # tree bottom
+            above = world_grid[row - 1][col]
+            if above == 6:
+                world_grid[row - 1][col] = (6, 7)
             else:
-                world_grid[row-1][column] = 7
-            
+                world_grid[row - 1][col] = 7
+
+# Grid geometry
+grid_width = cols
+grid_height = rows
+tilewidth = WORLD_WIDTH / grid_width
+tileheight = WORLD_HEIGHT / grid_height
 
 
-tilewidth  = WORLD_WIDTH  / len(world_grid[0])
-tileheight = WORLD_HEIGHT / len(world_grid) 
+# ============================================================
+# 4. ASSET LOADING
+# ============================================================
 
-grid_width = len(world_grid[0])
-grid_height = len(world_grid)
+def load_and_scale(path):
+    img = pygame.image.load(path).convert_alpha()
+    return pygame.transform.scale(img, (tileheight, tilewidth))
 
-shrub_image = pygame.image.load("images/shrub.png").convert_alpha()
-shrub_image = pygame.transform.scale(shrub_image, (tileheight, tilewidth))
-rock_image = pygame.image.load("images/rock.png").convert_alpha()
-rock_image = pygame.transform.scale(rock_image, (tileheight, tilewidth))
-clover_image = pygame.image.load("images/clover.png").convert_alpha()
-clover_image = pygame.transform.scale(clover_image, (tileheight, tilewidth))
-flower_image = pygame.image.load("images/flower_red.png").convert_alpha()
-flower_image = pygame.transform.scale(flower_image, (tileheight, tilewidth))
-tree_bottom_image = pygame.image.load("images/tree_bottom.png").convert_alpha()
-tree_bottom_image = pygame.transform.scale(tree_bottom_image, (tileheight, tilewidth))
-tree_top_image = pygame.image.load("images/tree_top.png").convert_alpha()
-tree_top_image = pygame.transform.scale(tree_top_image, (tileheight, tilewidth))
-warren_image = pygame.image.load("images/warren.png").convert_alpha()
-warren_image = pygame.transform.scale(warren_image, (tileheight, tilewidth))
+shrub_image       = load_and_scale("images/shrub.png")
+rock_image        = load_and_scale("images/rock.png")
+clover_image      = load_and_scale("images/clover.png")
+flower_image      = load_and_scale("images/flower_red.png")
+tree_bottom_image = load_and_scale("images/tree_bottom.png")
+tree_top_image    = load_and_scale("images/tree_top.png")
+warren_image      = load_and_scale("images/warren.png")
+
+
+# ============================================================
+# 5. WORLD DRAW FUNCTIONS
+# ============================================================
 
 def draw_world_grid(world_grid):
+    """Draw all ground-level tiles."""
     for row in range(len(world_grid)):
-        for column in range(len(world_grid[row])):
-            if world_grid[row][column] == 1:
-                screen.blit(rock_image, (column * tilewidth, row * tileheight))
-            if world_grid[row][column] == 2:
-                screen.blit(shrub_image, (column * tilewidth, row * tileheight))
-            if world_grid[row][column] == 3:
-                screen.blit(clover_image, (column * tilewidth, row * tileheight))
-            if world_grid[row][column] == 5:
-                screen.blit(flower_image, (column * tilewidth, row * tileheight))
-            if world_grid[row][column] == 6 or world_grid[row][column] == (6,7):
-                screen.blit(tree_bottom_image, (column * tilewidth, row * tileheight))
-            if world_grid[row][column] == 9:
-                screen.blit(warren_image, (column * tilewidth, row * tileheight))
+        for col in range(len(world_grid[row])):
+            tile = world_grid[row][col]
+            x = col * tilewidth
+            y = row * tileheight
+
+            if tile == 1:
+                screen.blit(rock_image, (x, y))
+            elif tile == 2:
+                screen.blit(shrub_image, (x, y))
+            elif tile == 3:
+                screen.blit(clover_image, (x, y))
+            elif tile == 5:
+                screen.blit(flower_image, (x, y))
+            elif tile == 6 or tile == (6, 7):
+                screen.blit(tree_bottom_image, (x, y))
+            elif tile == 9:
+                screen.blit(warren_image, (x, y))
+
 
 def draw_world_foreground(world_grid):
+    """Draw tree tops as a second pass. Fade if rabbit/fox under them."""
     for row in range(len(world_grid)):
-        for column in range(len(world_grid[row])):
-            if world_grid[row][column] == 7 or world_grid[row][column] == (6,7):
-                if (column, row) == rabbit.location or (column, row) == fox.location:
-                    # Create a faded copy for transparency
-                    faded_top = tree_top_image.copy()
-                    faded_top.set_alpha(160)  # slightly transparent
-                    screen.blit(faded_top, (column * tilewidth, row * tileheight))
+        for col in range(len(world_grid[row])):
+            tile = world_grid[row][col]
+            if tile == 7 or tile == (6, 7):
+                x = col * tilewidth
+                y = row * tileheight
+
+                if (col, row) == rabbit.location or (col, row) == fox.location:
+                    faded = tree_top_image.copy()
+                    faded.set_alpha(160)
+                    screen.blit(faded, (x, y))
                 else:
-                    # Draw normal opaque top
-                    screen.blit(tree_top_image, (column * tilewidth, row * tileheight))
+                    screen.blit(tree_top_image, (x, y))
+
+
+# ============================================================
+# 6. RESOURCE / FOOD PLACEMENT
+# ============================================================
 
 def place_flowers(count):
-    i = 0
-    while i < count:
+    """Randomly place flowers on walkable tiles."""
+    planted = 0
+    while planted < count:
         gx = random.randint(0, grid_width - 1)
         gy = random.randint(0, grid_height - 1)
         tile = world_grid[gy][gx]
 
-        # Only place on walkable ground — not on trees, rocks, shrubs, etc.
-        if tile in (0, 3, 5):  # 0=grass, 3=clover, 5=flower (can replace another flower)
+        if tile in (0, 3, 5):  # walkable ground
             world_grid[gy][gx] = 5
-            i += 1
+            planted += 1
+
 
 screen.fill((154, 202, 118))
-
 place_flowers(3)
 
-start_rabbit = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
-start_fox = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
 
-goal = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
+# ============================================================
+# 7. CREATURE INITIALIZATION
+# ============================================================
+
+start_rabbit = (
+    random.randint(0, grid_width - 1),
+    random.randint(0, grid_height - 1)
+)
+start_fox = (
+    random.randint(0, grid_width - 1),
+    random.randint(0, grid_height - 1)
+)
+
+goal = (
+    random.randint(0, grid_width - 1),
+    random.randint(0, grid_height - 1)
+)
 
 rabbit = Rabbit(start_rabbit, goal, tilewidth, tileheight, world_grid, grid_width, grid_height)
 rabbit.find_path(rabbit.location, rabbit.goal)
+
 fox = Fox(start_fox, goal, tilewidth, tileheight, world_grid, grid_width, grid_height)
+
+
+# Place the rabbit’s home (warren)
+rabbit_home = rabbit.location
+world_grid[rabbit_home[1]][rabbit_home[0]] = 9
+
+
+# ============================================================
+# 8. INITIAL DRAW
+# ============================================================
+
 draw_world_grid(world_grid)
 rabbit.draw(screen, tilewidth, tileheight)
 fox.draw(screen, tilewidth, tileheight)
 pygame.display.flip()
 
+
+# ============================================================
+# 9. GAME LOOP SETUP VARIABLES
+# ============================================================
+
 running = True
 clock = pygame.time.Clock()
 
-# To slow down visible motion — move every X frames
-move_delay = 15
+move_delay = 15  # frames per movement step
 frame_counter = 0
 
 rabbit_score = 0
-
-required_flowers = 5
-
-rabbit_home = rabbit.location
-world_grid[rabbit.location[1]][rabbit.location[0]] = 9
 
 while running:
     for event in pygame.event.get():

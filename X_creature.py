@@ -18,6 +18,7 @@ class Creature:
         self.path = []
         self.path_index = 0
         self.speed = 10
+        self.state = "wander"
 
         # Load sprite
         self.image = pygame.image.load(image_path).convert_alpha()
