@@ -23,8 +23,8 @@ class Creature:
         self.state = "wander"
 
         # === Rendering ===
-        self.image = pygame.image.load("").convert_alpha()
-        self.image = pygame.transform.scale(self.image, (tilewidth, tileheight))
+        # self.image = pygame.image.load("").convert_alpha()
+        # self.image = pygame.transform.scale(self.image, (tilewidth, tileheight))
 
 
 

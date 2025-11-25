@@ -16,7 +16,7 @@ TILE_SIZE = 25  # implicit from world generation grid spacing
 day_length = 60 * 30  # 30 seconds @ 60 fps
 day_timer = day_length
 
-required_flowers = 5  # goal for the day
+required_flowers = 8  # goal for the day
 
 
 # ============================================================
@@ -125,20 +125,28 @@ def draw_world_grid(world_grid):
 
 
 def draw_world_foreground(world_grid):
-    """Draw tree tops as a second pass. Fade if rabbit/fox under them."""
+    """Draw tree tops as a second pass. Fade if a rabbit or the fox is under them."""
     for row in range(len(world_grid)):
         for col in range(len(world_grid[row])):
             tile = world_grid[row][col]
+
             if tile == 7 or tile == (6, 7):
                 x = col * tilewidth
                 y = row * tileheight
 
-                if (col, row) == rabbit.location or (col, row) == fox.location:
+                # Check if ANY rabbit is here
+                rabbit_under = any(r.location == (col, row) for r in rabbits)
+
+                # Check if fox is here
+                fox_under = (col, row) == fox.location
+
+                if rabbit_under or fox_under:
                     faded = tree_top_image.copy()
                     faded.set_alpha(160)
                     screen.blit(faded, (x, y))
                 else:
                     screen.blit(tree_top_image, (x, y))
+
 
 
 # ============================================================
@@ -159,35 +167,66 @@ def place_flowers(count):
 
 
 screen.fill((154, 202, 118))
-place_flowers(3)
+place_flowers(6)
 
 
 # ============================================================
 # 7. CREATURE INITIALIZATION
 # ============================================================
 
-start_rabbit = (
+# Different random starts for each rabbit
+start_rabbit1 = (
     random.randint(0, grid_width - 1),
     random.randint(0, grid_height - 1)
 )
+start_rabbit2 = (
+    random.randint(0, grid_width - 1),
+    random.randint(0, grid_height - 1)
+)
+
+start_rabbit3 = (
+    random.randint(0, grid_width - 1),
+    random.randint(0, grid_height - 1)
+)
+
 start_fox = (
     random.randint(0, grid_width - 1),
     random.randint(0, grid_height - 1)
 )
 
-goal = (
+goal1 = (
+    random.randint(0, grid_width - 1),
+    random.randint(0, grid_height - 1)
+)
+goal2 = (
+    random.randint(0, grid_width - 1),
+    random.randint(0, grid_height - 1)
+)
+goal3 = (
     random.randint(0, grid_width - 1),
     random.randint(0, grid_height - 1)
 )
 
-rabbit = Rabbit(start_rabbit, goal, tilewidth, tileheight, world_grid, grid_width, grid_height)
-rabbit.find_path(rabbit.location, rabbit.goal)
+rabbit1 = Rabbit(start_rabbit1, goal1, tilewidth, tileheight,
+                 world_grid, grid_width, grid_height)
+rabbit1.find_path(rabbit1.location, rabbit1.goal)
 
-fox = Fox(start_fox, goal, tilewidth, tileheight, world_grid, grid_width, grid_height)
+rabbit2 = Rabbit(start_rabbit2, goal2, tilewidth, tileheight,
+                 world_grid, grid_width, grid_height)
+rabbit2.find_path(rabbit2.location, rabbit2.goal)
 
+rabbit3 = Rabbit(start_rabbit3, goal3, tilewidth, tileheight,
+                 world_grid, grid_width, grid_height)
+rabbit3.find_path(rabbit3.location, rabbit3.goal)
 
-# Place the rabbit’s home (warren)
-rabbit_home = rabbit.location
+# List of all rabbits
+rabbits = [rabbit1, rabbit2, rabbit3]
+
+fox = Fox(start_fox, None, tilewidth, tileheight,
+          world_grid, grid_width, grid_height)
+
+# Place rabbit1's burrow (warren)
+rabbit_home = rabbit1.location
 world_grid[rabbit_home[1]][rabbit_home[0]] = 9
 
 
@@ -196,8 +235,12 @@ world_grid[rabbit_home[1]][rabbit_home[0]] = 9
 # ============================================================
 
 draw_world_grid(world_grid)
-rabbit.draw(screen, tilewidth, tileheight)
+
+for r in rabbits:
+    r.draw(screen, tilewidth, tileheight)
+
 fox.draw(screen, tilewidth, tileheight)
+
 pygame.display.flip()
 
 
@@ -220,97 +263,115 @@ while running:
 
     # Fill background once per frame
     screen.fill((154, 202, 118))
-    # screen.fill((0, 0, 0))
     draw_world_grid(world_grid)
 
-
-    rabbit_delay = rabbit.speed
+    # compute fox delay once per frame (used below)
     fox_delay = fox.speed
 
-    rabbit.update_speed()
-    # === Rabbit Behavior ===
-    if frame_counter % rabbit_delay == 0:
-        rabbit.follow_path()
+    # -------------------------
+    # Update each rabbit
+    # -------------------------
+    for r in rabbits:
+        rabbit_delay = r.speed
 
-        # If fox is near, flee instead
-        if rabbit.detect_fox(fox.location):
-            escape_goal = rabbit.find_escape_goal(fox.location, grid_width, grid_height, world_grid)
-            if escape_goal:
-                rabbit.state = "flee"
-                rabbit.find_path(rabbit.location, escape_goal)
-                rabbit.boost()
-            elif rabbit.state == "flee" and rabbit.is_safe(fox.location):
-                rabbit.state = "recover"
-                rabbit.path = []
-                rabbit.goal = None
-                rabbit.recovery_timer = rabbit.recovery_delay
+        r.update_speed()
+        # === Rabbit Behavior ===
+        if frame_counter % rabbit_delay == 0:
+            r.follow_path()
 
-        elif rabbit.state == "wander" and not rabbit.path:
-            rabbit.wander(fox.path)
-            rabbit.find_path(rabbit.location, rabbit.goal)
+            # If fox is near, flee instead
+            if r.detect_fox(fox.location):
+                escape_goal = r.find_escape_goal(fox.location, grid_width, grid_height, world_grid)
+                if escape_goal:
+                    r.state = "flee"
+                    r.find_path(r.location, escape_goal)
+                    r.boost()
+                elif r.state == "flee" and r.is_safe(fox.location):
+                    r.state = "recover"
+                    r.path = []
+                    r.goal = None
+                    r.recovery_timer = r.recovery_delay
 
-        elif rabbit.detect_flower() and rabbit.state == "wander":
-            rabbit.path = []
-            rabbit.state = "seek"
-            rabbit.find_path(rabbit.location, rabbit.detect_flower())
+            elif r.state == "wander" and not r.path:
+                r.wander(fox.path)
+                r.find_path(r.location, r.goal)
 
-        if rabbit.state == "recover":
-            rabbit.recovery_timer -= 1
-            if rabbit.recovery_timer <= 0:
-                rabbit.state = "wander"
-                rabbit.wander(fox.path)
-                if not rabbit.path:
-                    # fallback in case wander picked an invalid goal
-                    rabbit.goal = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
-                    rabbit.find_path(rabbit.location, rabbit.goal)
+            elif r.detect_flower() and r.state == "wander":
+                r.path = []
+                r.state = "seek"
+                r.find_path(r.location, r.detect_flower())
+
+            if r.state == "recover":
+                r.recovery_timer -= 1
+                if r.recovery_timer <= 0:
+                    r.state = "wander"
+                    r.wander(fox.path)
+                    if not r.path:
+                        # fallback in case wander picked an invalid goal
+                        r.goal = (random.randint(0, grid_width - 1), random.randint(0, grid_height - 1))
+                        r.find_path(r.location, r.goal)
+
+            # === Rabbit failsafe ===
+            if not r.path and r.state in ("seek", "flee", "recover"):
+                r.state = "wander"
+                r.wander(fox.path)
+                r.find_path(r.location, r.goal)
+
+            # Check win/lose conditions (per-rabbit behavior for returning home)
+            if rabbit_score >= required_flowers and r.state != "return_home":
+                print("Enough flowers collected! Returning home.")
+                r.state = "return_home"
+                r.find_path(r.location, rabbit_home)
+
+            elif day_timer <= 0 and r.state != "return_home":
+                print("Day ended! Returning home.")
+                r.state = "return_home"
+                r.find_path(r.location, rabbit_home)
+
+            # Track per-rabbit success without ending the game immediately
+            if r.state == "return_home" and r.location == rabbit_home:
+                r.state = "safe"   # mark rabbit as home and safe
+                print("Rabbit made it home safely!")
+
+            # -------------------------
+            # END CONDITION (ALL RABBITS RESOLVED)
+            # -------------------------
+            # All rabbits must be either:
+            #   - safely at home (state == "safe")
+            #   - or removed because they were caught
+            if all( (r.state == "safe") for r in rabbits ):
+                print("All surviving rabbits are safely home!")
+                print(f"Final Score: {rabbit_score}")
+                print(f"{len(rabbits)} rabbits survived.")
+                running = False
 
 
-        # === Rabbit failsafe ===
-        if not rabbit.path and rabbit.state in ("seek", "flee", "recover"):
-            rabbit.state = "wander"
-            rabbit.wander(fox.path)
-            rabbit.find_path(rabbit.location, rabbit.goal)
-
-        # Check win/lose conditions
-        if rabbit_score >= required_flowers and rabbit.state != "return_home":
-            print("Enough flowers collected! Returning home.")
-            rabbit.state = "return_home"
-            rabbit.find_path(rabbit.location, rabbit_home)
-
-        elif day_timer <= 0 and rabbit.state != "return_home":
-            print("Day ended! Returning home.")
-            rabbit.state = "return_home"
-            rabbit.find_path(rabbit.location, rabbit_home)
-
-        if rabbit.state == "return_home" and rabbit.location == rabbit_home:
-            print("Rabbit made it home safely!")
-            if rabbit_score >= required_flowers:
-                print("You survived the day!")
-            else:
-                print("Not enough food collected. Game over.")
-            running = False
-
-
-
-    # === Fox Behavior ===
+    # -------------------------
+    # Fox Behavior (multi-rabbit aware)
+    # -------------------------
     if frame_counter % fox_delay == 0:
-
         # 1. Wandering behavior
         if fox.state == "wander":
             # Occasionally pick a new random goal
             if not fox.path:
                 fox.wander()
 
-            # Check if rabbit is visible
-            if fox.detect_rabbit(rabbit.location):
+            # Check visible rabbits
+            visible = [rr for rr in rabbits if fox.detect_rabbit(rr.location)]
+            if visible:
+                # pick the closest visible rabbit
+                target = min(visible, key=lambda rr: fox.octile_distance(fox.location, rr.location))
                 fox.state = "hunt"
-                fox.goal = rabbit.location
+                fox.goal = target.location
                 fox.find_path(fox.location, fox.goal)
 
         # 2. Hunting behavior
         elif fox.state == "hunt":
-            if fox.detect_rabbit(rabbit.location):
-                fox.goal = rabbit.location
+            # Check if any rabbit is visible this tick
+            visible = [rr for rr in rabbits if fox.detect_rabbit(rr.location)]
+            if visible:
+                target = min(visible, key=lambda rr: fox.octile_distance(fox.location, rr.location))
+                fox.goal = target.location
                 fox.find_path(fox.location, fox.goal)
                 fox.memory_timer = fox.memory_duration  # refresh memory
             else:
@@ -319,10 +380,11 @@ while running:
                     fox.state = "wander"
                     fox.path = []
                     fox.goal = None
-                    fox.wander()  # 🦊 immediately pick a new random wander goal
+                    fox.wander()  # pick a new random wander goal
                 else:
                     # Keep moving toward last known rabbit location
-                    fox.find_path(fox.location, fox.goal)
+                    if fox.goal is not None:
+                        fox.find_path(fox.location, fox.goal)
 
             # Failsafe: If no valid path, switch back to wandering
             if not fox.path:
@@ -331,26 +393,57 @@ while running:
                 fox.goal = None
                 fox.wander()
 
-
         fox.follow_path()
 
-    if world_grid[rabbit.location[1]][rabbit.location[0]] == 5:
-        world_grid[rabbit.location[1]][rabbit.location[0]] = 0
-        place_flowers(1)
-        rabbit.state = "wander"
-        rabbit_score += 1
-        print(rabbit_score)
+    # -------------------------
+    # Flower collection (work per-rabbit)
+    # -------------------------
+    for r in rabbits:
+        x, y = r.location
+        if 0 <= y < len(world_grid) and 0 <= x < len(world_grid[0]):
+            if world_grid[y][x] == 5:
+                world_grid[y][x] = 0
+                place_flowers(1)
+                r.state = "wander"
+                rabbit_score += 1
+                print(rabbit_score)
 
-    if fox.location == rabbit.location:
-        print("Game End!")
-        print(f"Score: {rabbit_score}")
-        running = False
+    # -------------------------
+    # Fox catches a rabbit? (check all rabbits)
+    # -------------------------
+    for r in list(rabbits):
+        if fox.location == r.location:
+            print("A rabbit was caught!")
+            rabbits.remove(r)
 
-    rabbit.draw(screen, tilewidth, tileheight)
+            # --- FIX FREEZE: reset fox ----
+            fox.state = "wander"
+            fox.goal = None
+            fox.path = []
+            fox.memory_timer = fox.memory_duration
+            fox.wander()
+            # ------------------------------
+
+            if len(rabbits) == 0:
+                print("All rabbits are caught!")
+                print(f"Final Score: {rabbit_score}")
+                running = False
+
+
+
+    # -------------------------
+    # DRAWING
+    # -------------------------
+    for r in rabbits:
+        r.draw(screen, tilewidth, tileheight)
+
     fox.draw(screen, tilewidth, tileheight)
     draw_world_foreground(world_grid)
     pygame.display.flip()
 
+    # -------------------------
+    # END OF FRAME housekeeping
+    # -------------------------
     day_timer -= 1
 
     if frame_counter % 30 == 0:
@@ -358,5 +451,3 @@ while running:
 
     frame_counter += 1
     clock.tick(30)
-
-
