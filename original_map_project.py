@@ -221,6 +221,7 @@ rabbit3.find_path(rabbit3.location, rabbit3.goal)
 
 # List of all rabbits
 rabbits = [rabbit1, rabbit2, rabbit3]
+rabbitspop = [rabbit1, rabbit2, rabbit3]
 
 fox = Fox(start_fox, None, tilewidth, tileheight,
           world_grid, grid_width, grid_height)
@@ -331,6 +332,7 @@ while running:
             # Track per-rabbit success without ending the game immediately
             if r.state == "return_home" and r.location == rabbit_home:
                 r.state = "safe"   # mark rabbit as home and safe
+                rabbits.remove(r)
                 print("Rabbit made it home safely!")
 
             # -------------------------
@@ -339,7 +341,7 @@ while running:
             # All rabbits must be either:
             #   - safely at home (state == "safe")
             #   - or removed because they were caught
-            if all( (r.state == "safe") for r in rabbits ):
+            if all( (r.state == "safe") for r in rabbitspop ):
                 print("All surviving rabbits are safely home!")
                 print(f"Final Score: {rabbit_score}")
                 print(f"{len(rabbits)} rabbits survived.")
@@ -355,6 +357,9 @@ while running:
             # Occasionally pick a new random goal
             if not fox.path:
                 fox.wander()
+                if fox.goal:
+                    fox.find_path(fox.location, fox.goal)
+
 
             # Check visible rabbits
             visible = [rr for rr in rabbits if fox.detect_rabbit(rr.location)]
@@ -382,16 +387,8 @@ while running:
                     fox.goal = None
                     fox.wander()  # pick a new random wander goal
                 else:
-                    # Keep moving toward last known rabbit location
-                    if fox.goal is not None:
-                        fox.find_path(fox.location, fox.goal)
-
-            # Failsafe: If no valid path, switch back to wandering
-            if not fox.path:
-                fox.state = "wander"
-                fox.path = []
-                fox.goal = None
-                fox.wander()
+                    # Keep moving toward last known rabbit location    
+                    fox.find_path(fox.location, fox.goal)
 
         fox.follow_path()
 
