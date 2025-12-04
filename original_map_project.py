@@ -49,8 +49,8 @@ working_list = []
 # Weighted tile distribution — most slots are 0 for empty ground
 cell_states = [
     0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,  # lots of empty ground
-    2,   # shrub
-    1, 1,  # rock
+    2, 2,   # shrub
+    1,  # rock
     6   # tree bottom (tree top placed later)
 ]
 
@@ -335,17 +335,17 @@ while running:
                 rabbits.remove(r)
                 print("Rabbit made it home safely!")
 
-            # -------------------------
-            # END CONDITION (ALL RABBITS RESOLVED)
-            # -------------------------
-            # All rabbits must be either:
-            #   - safely at home (state == "safe")
-            #   - or removed because they were caught
-            if all( (r.state == "safe") for r in rabbitspop ):
-                print("All surviving rabbits are safely home!")
-                print(f"Final Score: {rabbit_score}")
-                print(f"{len(rabbits)} rabbits survived.")
-                running = False
+                # -------------------------
+                # END CONDITION (ALL RABBITS RESOLVED)
+                # -------------------------
+                # All rabbits must be either:
+                #   - safely at home (state == "safe")
+                #   - or removed because they were caught
+                if all( (r.state == "safe") for r in rabbitspop ):
+                    print("All surviving rabbits are safely home!")
+                    print(f"Final Score: {rabbit_score}")
+                    print(f"{len(rabbitspop)} rabbits survived.")
+                    running = False
 
 
     # -------------------------
@@ -412,6 +412,7 @@ while running:
         if fox.location == r.location:
             print("A rabbit was caught!")
             rabbits.remove(r)
+            rabbitspop.remove(r)
 
             # --- FIX FREEZE: reset fox ----
             fox.state = "wander"
